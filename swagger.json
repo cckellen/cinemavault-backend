@@ -1,0 +1,382 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CinemaVault API",
+    "description": "RESTful API for CinemaVault film discovery platform - 6003CEM Assignment. Supports JWT authentication, RBAC, HATEOAS links, and conditional HTTP requests (ETag).",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "http://localhost:5000", "description": "Development server" }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "username": { "type": "string" },
+          "role": { "type": "string", "enum": ["USER", "ADMIN"] },
+          "avatarUrl": { "type": "string" },
+          "avatar": { "type": "string" }
+        }
+      },
+      "Movie": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "titleZh": { "type": "string" },
+          "plot": { "type": "string" },
+          "genre": { "type": "string" },
+          "year": { "type": "integer" },
+          "rating": { "type": "number", "minimum": 0, "maximum": 10 },
+          "imdbRating": { "type": "number" },
+          "poster": { "type": "string" },
+          "posterUrl": { "type": "string" },
+          "director": { "type": "string" },
+          "castInfo": { "type": "string" },
+          "runtime": { "type": "string" },
+          "omdbId": { "type": "string" },
+          "isActive": { "type": "boolean" },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "href": { "type": "string" },
+                "method": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["title", "genre"]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "content": { "type": "string" },
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "movieId": { "type": "string" },
+          "isRead": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } }
+      }
+    }
+  },
+  "paths": {
+    "/api": {
+      "get": {
+        "summary": "API root with HATEOAS links",
+        "tags": ["Root"],
+        "responses": { "200": { "description": "API information" } }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register new user account",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "username": { "type": "string" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User registered" },
+          "400": { "description": "Invalid input", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login and receive JWT token",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Get current authenticated user",
+        "tags": ["Auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Current user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/movies": {
+      "get": {
+        "summary": "Browse active movies (public)",
+        "tags": ["Movies"],
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Filter by title" },
+          { "name": "genre", "in": "query", "schema": { "type": "string" } },
+          { "name": "year", "in": "query", "schema": { "type": "integer" } },
+          { "name": "minRating", "in": "query", "schema": { "type": "number" }, "description": "Minimum IMDB rating" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["title", "year", "rating"] } },
+          { "name": "If-None-Match", "in": "header", "schema": { "type": "string" }, "description": "Conditional request ETag" }
+        ],
+        "responses": {
+          "200": { "description": "List of movies with HATEOAS links" },
+          "304": { "description": "Not modified" }
+        }
+      },
+      "post": {
+        "summary": "Create movie (Admin only)",
+        "tags": ["Movies"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Movie" } } } },
+        "responses": { "201": { "description": "Movie created" }, "403": { "description": "Admin required" } }
+      }
+    },
+    "/api/movies/{id}": {
+      "get": {
+        "summary": "Get single movie by ID (public)",
+        "tags": ["Movies"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "If-None-Match", "in": "header", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Movie details" }, "304": { "description": "Not modified" }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "summary": "Update movie (Admin only)",
+        "tags": ["Movies"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Updated" }, "403": { "description": "Admin required" } }
+      },
+      "delete": {
+        "summary": "Delete movie (Admin only)",
+        "tags": ["Movies"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    },
+    "/api/admin/movies": {
+      "get": {
+        "summary": "List all movies including inactive (Admin)",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "All movies" } }
+      },
+      "post": {
+        "summary": "Create movie (Admin)",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Movie" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/api/admin/movies/{id}": {
+      "put": {
+        "summary": "Update movie (Admin)",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Updated" } }
+      },
+      "delete": {
+        "summary": "Delete movie (Admin)",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    },
+    "/api/admin/movies/import": {
+      "post": {
+        "summary": "Import movie from OMDB by IMDb ID (Admin)",
+        "tags": ["Admin", "OMDB"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "imdbId": { "type": "string" } }, "required": ["imdbId"] } } }
+        },
+        "responses": { "201": { "description": "Imported" }, "404": { "description": "Not found on OMDB" } }
+      }
+    },
+    "/api/favorites": {
+      "get": {
+        "summary": "Get user favourites",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Favourite movies" } }
+      },
+      "post": {
+        "summary": "Add movie to favourites",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "movieId": { "type": "string" } }, "required": ["movieId"] } } }
+        },
+        "responses": { "201": { "description": "Added" }, "409": { "description": "Already favourited" } }
+      }
+    },
+    "/api/favorites/{movieId}": {
+      "post": {
+        "summary": "Add movie to favourites by path param",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "movieId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "Added" } }
+      },
+      "delete": {
+        "summary": "Remove from favourites",
+        "tags": ["Favorites"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "movieId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Removed" } }
+      }
+    },
+    "/api/messages": {
+      "get": {
+        "summary": "Get messages (users see own; admin sees all)",
+        "tags": ["Messages"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Message list" } }
+      },
+      "post": {
+        "summary": "Send message to administrator",
+        "tags": ["Messages"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": { "type": "string" },
+                  "movieId": { "type": "string" }
+                },
+                "required": ["content"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Sent" } }
+      }
+    },
+    "/api/messages/{id}/reply": {
+      "post": {
+        "summary": "Admin reply to a message",
+        "tags": ["Messages"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "content": { "type": "string" } }, "required": ["content"] } } }
+        },
+        "responses": { "201": { "description": "Reply sent" } }
+      }
+    },
+    "/api/messages/{id}": {
+      "delete": {
+        "summary": "Admin delete message",
+        "tags": ["Messages"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    },
+    "/api/profile/avatar": {
+      "post": {
+        "summary": "Upload profile photo",
+        "tags": ["Profile"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "avatar": { "type": "string", "format": "binary" } } } } }
+        },
+        "responses": { "200": { "description": "Avatar updated" } }
+      }
+    },
+    "/api/watchlist": {
+      "get": {
+        "summary": "Get watchlist or watched items",
+        "tags": ["Watchlist"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "status", "in": "query", "schema": { "type": "string", "enum": ["WATCHLIST", "WATCHED"] } }],
+        "responses": { "200": { "description": "Watchlist items" } }
+      },
+      "post": {
+        "summary": "Add or update watchlist status",
+        "tags": ["Watchlist"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "movieId": { "type": "string" },
+                  "status": { "type": "string", "enum": ["WATCHLIST", "WATCHED"] }
+                },
+                "required": ["movieId"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Added/updated" } }
+      }
+    },
+    "/api/watchlist/{movieId}": {
+      "delete": {
+        "summary": "Remove from watchlist",
+        "tags": ["Watchlist"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "movieId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Removed" } }
+      }
+    },
+    "/api/omdb/search": {
+      "get": {
+        "summary": "Search OMDB for films",
+        "tags": ["OMDB"],
+        "parameters": [{ "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Search results" } }
+      }
+    }
+  }
+}
