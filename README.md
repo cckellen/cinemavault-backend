@@ -8,7 +8,9 @@ TypeScript RESTful API for the CinemaVault film discovery platform (6003CEM Web 
 - **Movies**: Public browse, search, filter (title, genre, year, rating), sort; admin CRUD
 - **Favourites**: Registered users can save favourite films
 - **Messages**: Users send messages to admin; admin can reply and delete
-- **Profile**: Upload profile photos
+- **Profile**: View/update username and upload profile photos
+- **Meta**: Health check, genre list, admin dashboard stats
+- **Seed data**: Sample users and films via `npm run db:seed`
 - **Watchlist / Watched**: Track viewing progress
 - **OMDB Integration**: Search and import film metadata from [OMDB API](https://www.omdbapi.com)
 - **OpenAPI 3.0**: Full specification at `/api-docs`
@@ -37,6 +39,7 @@ cp .env.example .env
 
 npx prisma generate
 npx prisma db push
+npm run db:seed
 
 npm run dev
 ```
@@ -46,6 +49,8 @@ Server runs at `http://localhost:5000`. Swagger UI at `http://localhost:5000/api
 ## Admin Account
 
 Register with an email containing `admin` (e.g. `admin@cinemavault.com`) to receive the ADMIN role automatically.
+
+After seeding: `admin@cinemavault.com` / `admin123`, `demo@cinemavault.com` / `demo123`.
 
 ## Environment Variables
 
@@ -73,8 +78,13 @@ Register with an email containing `admin` (e.g. `admin@cinemavault.com`) to rece
 | POST | `/api/favorites` | JWT | Add favourite |
 | GET | `/api/messages` | JWT | Messages |
 | POST | `/api/messages` | JWT | Send to admin |
+| GET | `/api/profile` | JWT | User profile |
+| PUT | `/api/profile` | JWT | Update username |
 | POST | `/api/profile/avatar` | JWT | Upload photo |
 | GET | `/api/watchlist` | JWT | Watchlist items |
+| GET | `/api/health` | Public | Health check |
+| GET | `/api/genres` | Public | Distinct genres |
+| GET | `/api/stats` | Admin | Dashboard statistics |
 | GET | `/api/omdb/search?q=` | Public | OMDB search |
 
 ## Testing
@@ -98,6 +108,7 @@ Tests use setup/teardown to seed and clean test data. The production database is
 | `npm run build` | Compile TypeScript |
 | `npm start` | Run compiled server |
 | `npm test` | Run API endpoint tests |
+| `npm run db:seed` | Seed demo users and sample films |
 | `npm run prisma:studio` | Open Prisma Studio |
 
 ## Project Structure

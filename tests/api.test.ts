@@ -327,3 +327,51 @@ describe('API Root', () => {
     expect(res.body._links.movies).toBeDefined();
   });
 });
+
+describe('Meta API', () => {
+  it('returns health status', async () => {
+    const res = await request(app).get('/api/health');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.service).toBe('CinemaVault API');
+  });
+
+  it('returns distinct genres', async () => {
+    const res = await request(app).get('/api/genres');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.genres)).toBe(true);
+  });
+
+  it('rejects stats without auth', async () => {
+    const res = await request(app).get('/api/stats');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns admin stats', async () => {
+    const res = await request(app)
+      .get('/api/stats')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.activeMovies).toBeDefined();
+    expect(res.body.totalUsers).toBeDefined();
+  });
+});
+
+describe('Profile API', () => {
+  it('returns user profile', async () => {
+    const res = await request(app)
+      .get('/api/profile')
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.email).toBe(userEmail);
+  });
+
+  it('updates username', async () => {
+    const res = await request(app)
+      .put('/api/profile')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ username: 'UpdatedUser' });
+    expect(res.status).toBe(200);
+    expect(res.body.username).toBe('UpdatedUser');
+  });
+});

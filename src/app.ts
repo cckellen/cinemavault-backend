@@ -11,6 +11,7 @@ import messageRoutes from './routes/messages';
 import profileRoutes from './routes/profile';
 import watchlistRoutes from './routes/watchlist';
 import omdbRoutes from './routes/omdb';
+import metaRoutes from './routes/meta';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const swaggerDocument = require('../swagger.json');
@@ -57,6 +58,7 @@ export function createApp() {
   app.use('/api/profile', profileRoutes);
   app.use('/api/watchlist', watchlistRoutes);
   app.use('/api/omdb', omdbRoutes);
+  app.use('/api', metaRoutes);
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });

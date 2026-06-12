@@ -4,6 +4,7 @@ import prisma from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { toMovieResponse, fromMovieInput } from '../utils/movie';
 import { fetchOmdbById, omdbToMovieData } from '../utils/omdb';
+import { publishNewFilmAnnouncement } from '../utils/social';
 
 const router = express.Router();
 
@@ -35,7 +36,15 @@ router.post('/movies', async (req: AuthRequest, res) => {
   try {
     const parsed = movieSchema.parse(req.body);
     const data = fromMovieInput(parsed);
-    const movie = await prisma.movie.create({ data });
+    const movie = await prisma.movie.create({ data: { ...data, isActive: data.isActive ?? true } });
+    if (movie.isActive) {
+      publishNewFilmAnnouncement({
+        title: movie.title,
+        genre: movie.genre,
+        year: movie.year,
+        rating: movie.imdbRating != null ? Number(movie.imdbRating) : null,
+      });
+    }
     res.status(201).json(toMovieResponse(movie));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Invalid movie data';
