@@ -19,9 +19,20 @@ const swaggerDocument = require('../swagger.json');
 export function createApp() {
   const app = express();
 
-  const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173')
-    .split(',')
-    .map((o) => o.trim());
+  const port = process.env.PORT || '5000';
+  const serverOrigins = [
+    `http://localhost:${port}`,
+    `http://127.0.0.1:${port}`,
+  ];
+  const allowedOrigins = [
+    ...new Set([
+      ...serverOrigins,
+      ...(process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ]),
+  ];
 
   app.use(cors({
     origin: (origin, callback) => {
