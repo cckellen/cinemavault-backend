@@ -89,16 +89,34 @@ After seeding: `admin@cinemavault.com` / `admin123`, `demo@cinemavault.com` / `d
 
 ## Testing
 
-Create a dedicated test database and configure `.env.test`:
+API endpoint tests use **Jest + Supertest** with a dedicated test database (`cinemavault_test`).
 
 ```bash
-# Create test database in MySQL
-CREATE DATABASE cinemavault_test;
+# 1. Copy and configure test environment
+cp .env.test.example .env.test
 
+# 2. Create test database and sync schema
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS cinemavault_test;"
+DATABASE_URL="mysql://root:yourpassword@localhost:3306/cinemavault_test" npx prisma db push
+
+# 3. Run tests
 npm test
 ```
 
-Tests use setup/teardown to seed and clean test data. The production database is never modified during testing when `.env.test` points to a separate database.
+### Coverage
+
+| Test file | Endpoints covered |
+|-----------|-------------------|
+| `auth.test.ts` | Register, login, `/auth/me` — valid & invalid requests |
+| `movies.test.ts` | Public browse/search/filter, ETag, CRUD authorization |
+| `admin.test.ts` | Admin movie list, OMDB import (mocked) |
+| `favorites.test.ts` | Add/list/remove favourites |
+| `messages.test.ts` | Send, reply, delete messages |
+| `watchlist.test.ts` | Watchlist / watched tracking |
+| `profile.test.ts` | Profile update, avatar upload |
+| `meta.test.ts` | Health, genres, stats, OMDB search |
+
+Tests include valid and invalid HTTP requests, JWT authentication/authorization checks, conditional requests (ETag), and setup/teardown to isolate each run. Production data is never touched when `.env.test` uses a separate database.
 
 ## Scripts
 
@@ -124,4 +142,14 @@ src/
 prisma/schema.prisma    # Database schema
 swagger.json            # OpenAPI specification
 tests/                  # Jest + Supertest API tests
+├── helpers.ts          # Shared setup, auth helpers, cleanup
+├── fixtures/           # Test assets (avatar.png)
+├── auth.test.ts
+├── movies.test.ts
+├── admin.test.ts
+├── favorites.test.ts
+├── messages.test.ts
+├── watchlist.test.ts
+├── profile.test.ts
+└── meta.test.ts
 ```

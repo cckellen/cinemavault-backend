@@ -6,4 +6,5 @@ module.exports = {
   testMatch: ['**/*.test.ts'],
   setupFiles: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
+  maxWorkers: 1,
 };
