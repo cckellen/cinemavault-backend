@@ -34,9 +34,26 @@ export function createApp() {
     ]),
   ];
 
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  function isLocalDevOrigin(origin: string): boolean {
+    try {
+      const { hostname, protocol } = new URL(origin);
+      return (protocol === 'http:' || protocol === 'https:') &&
+        (hostname === 'localhost' || hostname === '127.0.0.1');
+    } catch {
+      return false;
+    }
+  }
+
   app.use(cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes('*') ||
+        (isDev && isLocalDevOrigin(origin))
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
