@@ -5,6 +5,7 @@ module.exports = {
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
   setupFiles: ['<rootDir>/tests/setup.ts'],
+  globalSetup: '<rootDir>/tests/globalSetup.ts',
   testTimeout: 30000,
   maxWorkers: 1,
 };

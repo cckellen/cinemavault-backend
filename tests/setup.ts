@@ -1,8 +1,3 @@
-import dotenv from 'dotenv';
-import path from 'path';
+import { loadTestEnv } from './loadTestEnv';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
-
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key';
+loadTestEnv();

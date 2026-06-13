@@ -89,17 +89,18 @@ After seeding: `admin@cinemavault.com` / `admin123`, `demo@cinemavault.com` / `d
 
 ## Testing
 
-API endpoint tests use **Jest + Supertest** with a dedicated test database (`cinemavault_test`).
+Tests read **only `.env.test`** (never `.env`). `npm test` fails immediately if:
+
+- `DATABASE_URL` is missing, has placeholder credentials, or cannot connect to `cinemavault_test`
+- `OMDB_API_KEY` is missing or still a placeholder — OMDB tests call the real API
 
 ```bash
-# 1. Copy and configure test environment
 cp .env.test.example .env.test
+# Edit .env.test: real MySQL password + real OMDB API key
 
-# 2. Create test database and sync schema
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS cinemavault_test;"
-DATABASE_URL="mysql://root:yourpassword@localhost:3306/cinemavault_test" npx prisma db push
+npx prisma db push
 
-# 3. Run tests
 npm test
 ```
 
@@ -107,16 +108,18 @@ npm test
 
 | Test file | Endpoints covered |
 |-----------|-------------------|
-| `auth.test.ts` | Register, login, `/auth/me` — valid & invalid requests |
-| `movies.test.ts` | Public browse/search/filter, ETag, CRUD authorization |
-| `admin.test.ts` | Admin movie list, OMDB import (mocked) |
-| `favorites.test.ts` | Add/list/remove favourites |
-| `messages.test.ts` | Send, reply, delete messages |
-| `watchlist.test.ts` | Watchlist / watched tracking |
-| `profile.test.ts` | Profile update, avatar upload |
-| `meta.test.ts` | Health, genres, stats, OMDB search |
+| `00-database.test.ts` | Verifies `.env.test` DB + OMDB key |
+| `auth.test.ts` | Register, login, `/auth/me` |
+| `movies.test.ts` | Browse/search/filter, ETag, CRUD |
+| `admin.test.ts` | Admin movie list |
+| `favorites.test.ts` | Favourites |
+| `messages.test.ts` | Messages |
+| `watchlist.test.ts` | Watchlist |
+| `profile.test.ts` | Profile, avatar upload |
+| `meta.test.ts` | Health, genres, stats |
+| `omdb.test.ts` | Real OMDB search + import |
 
-Tests include valid and invalid HTTP requests, JWT authentication/authorization checks, conditional requests (ETag), and setup/teardown to isolate each run. Production data is never touched when `.env.test` uses a separate database.
+Tests use setup/teardown against `cinemavault_test` only. Production `.env` is never loaded during tests.
 
 ## Scripts
 

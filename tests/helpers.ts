@@ -1,6 +1,9 @@
 import request from 'supertest';
 import { Express } from 'express';
 import prisma from '../src/lib/prisma';
+import { assertTestDatabase } from './loadTestEnv';
+
+export { assertTestDatabase };
 
 export const testRunId = Date.now();
 export const adminEmail = `admin-${testRunId}@cinemavault.test`;
@@ -16,7 +19,9 @@ export const state = {
 };
 
 export async function connectDb(): Promise<void> {
+  assertTestDatabase();
   await prisma.$connect();
+  await prisma.$queryRaw`SELECT 1`;
 }
 
 export async function cleanupTestData(): Promise<void> {
