@@ -1,4 +1,5 @@
 import { Movie } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 export interface MovieResponse {
   id: string;
@@ -69,4 +70,14 @@ export function fromMovieInput(body: Record<string, unknown>) {
     omdbId: body.omdbId as string | undefined,
     isActive: body.isActive as boolean | undefined,
   };
+}
+
+/** Soft-delete: hide from public/admin lists and release omdbId for re-import. */
+export async function deactivateMovie(id: string): Promise<Movie | null> {
+  const movie = await prisma.movie.findUnique({ where: { id } });
+  if (!movie || !movie.isActive) return null;
+  return prisma.movie.update({
+    where: { id },
+    data: { isActive: false, omdbId: null },
+  });
 }

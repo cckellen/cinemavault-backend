@@ -55,13 +55,38 @@ describe('Admin Movies API', () => {
     expect(res.status).toBe(403);
   });
 
-  it('lists all movies including inactive for admin', async () => {
+  it('lists active movies for admin by default', async () => {
     const res = await request(app)
       .get('/api/admin/movies')
       .set(authHeader(state.adminToken));
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.every((m: { isActive: boolean }) => m.isActive !== false)).toBe(true);
     expect(res.body.some((m: { id: string }) => m.id === state.movieId)).toBe(true);
+  });
+
+  it('can list inactive movies with includeInactive=true', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/movies')
+      .set(authHeader(state.adminToken))
+      .send({ title: `Test Movie ${testRunId}-inactive`, genre: 'Drama', year: 2020 });
+    const inactiveId = createRes.body.id;
+
+    await request(app)
+      .delete(`/api/admin/movies/${inactiveId}`)
+      .set(authHeader(state.adminToken));
+
+    const activeList = await request(app)
+      .get('/api/admin/movies')
+      .set(authHeader(state.adminToken));
+    expect(activeList.body.some((m: { id: string }) => m.id === inactiveId)).toBe(false);
+
+    const fullList = await request(app)
+      .get('/api/admin/movies')
+      .query({ includeInactive: 'true' })
+      .set(authHeader(state.adminToken));
+    const deleted = fullList.body.find((m: { id: string }) => m.id === inactiveId);
+    expect(deleted?.isActive).toBe(false);
   });
 
   it('creates movie as admin via /api/admin/movies', async () => {
@@ -97,8 +122,31 @@ describe('Admin Movies API', () => {
     const listRes = await request(app)
       .get('/api/admin/movies')
       .set(authHeader(state.adminToken));
-    const deleted = listRes.body.find((m: { id: string; isActive: boolean }) => m.id === deleteId);
+    expect(listRes.body.some((m: { id: string }) => m.id === deleteId)).toBe(false);
+
+    const inactiveList = await request(app)
+      .get('/api/admin/movies')
+      .query({ includeInactive: 'true' })
+      .set(authHeader(state.adminToken));
+    const deleted = inactiveList.body.find((m: { id: string; isActive: boolean }) => m.id === deleteId);
     expect(deleted?.isActive).toBe(false);
+  });
+
+  it('returns 404 when deleting already deleted movie', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/movies')
+      .set(authHeader(state.adminToken))
+      .send({ title: `Test Movie ${testRunId}-double-delete`, genre: 'Drama', year: 2019 });
+    const id = createRes.body.id;
+
+    await request(app)
+      .delete(`/api/admin/movies/${id}`)
+      .set(authHeader(state.adminToken));
+
+    const res = await request(app)
+      .delete(`/api/admin/movies/${id}`)
+      .set(authHeader(state.adminToken));
+    expect(res.status).toBe(404);
   });
 
   it('returns 404 when deleting unknown movie', async () => {

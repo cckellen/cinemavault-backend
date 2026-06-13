@@ -2,7 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
-import { toMovieResponse, fromMovieInput } from '../utils/movie';
+import { toMovieResponse, fromMovieInput, deactivateMovie } from '../utils/movie';
 import { generateETag, setConditionalHeaders, isNotModified } from '../utils/etag';
 
 const router = express.Router();
@@ -113,15 +113,9 @@ router.put('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res
 });
 
 router.delete('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
-  try {
-    await prisma.movie.update({
-      where: { id: req.params.id },
-      data: { isActive: false },
-    });
-    res.status(204).send();
-  } catch {
-    res.status(404).json({ error: 'Movie not found' });
-  }
+  const movie = await deactivateMovie(req.params.id);
+  if (!movie) return res.status(404).json({ error: 'Movie not found' });
+  res.status(204).send();
 });
 
 export default router;
